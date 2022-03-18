@@ -1,0 +1,137 @@
+{% extends 'base.html.twig' %}
+{% form_theme formulaire 'bootstrap_5_horizontal_layout.html.twig' %}
+
+
+{% block title %}
+	{{parent()}}
+{% endblock %}
+
+{% block body %}
+
+	<div class="text-center mt-5">
+		<h2 class="section-heading text-uppercase">Rechercher une sortie</h2>
+	</div>
+	{{form_start(formulaire)}}
+
+
+<div class="d-flex">
+	<div id="colonne-gauche" class="col-6 mt-4">
+		{{form_row(formulaire.campus)}}
+		{{form_errors(formulaire.campus)}}
+		{{form_row(formulaire.startDate)}}
+		{{form_errors(formulaire.startDate)}}
+		{{form_row(formulaire.endDate) }}
+		{{form_errors(formulaire.endDate)}}
+		{{form_row(formulaire.search)}}
+		
+	</div>
+
+	<div id="colonne-droite" class="col-6 mt-4">
+		{{form_row(formulaire.eventOrganizer)}}
+		{{form_errors(formulaire.eventOrganizer)}}
+
+		{{form_row(formulaire.eventRegister)}}
+		{{form_errors(formulaire.eventRegister)}}
+
+		{{form_row(formulaire.eventNotRegister)}}
+		{{form_errors(formulaire.eventNotRegister)}}
+
+		{{form_row(formulaire.pastEvent)}}
+		{{form_errors(formulaire.pastEvent)}}
+
+		<div id="submit-button" class="offset-3 mt-5">
+			<button name="submit" type="submit" class="btn btn-primary">Rechercher</button>
+		</div>	
+	</div>
+</div>
+		
+	{{form_end(formulaire)}}
+
+	<div id="sorties" class="mt-5"></div>
+	<div class="text-center">
+		<h2 class="section-heading text-uppercase mb-5">Liste des sorties</h2>
+	</div>
+
+
+			<table class="table table-responsive table-hover dataTable-pagination">
+				<thead>
+					<tr>
+						<th scope="col">Sortie</th>
+						<th scope="col">Date de sortie</th>
+						<th scope="col">Fin des inscriptions</th>
+						<th scope="col">Inscrits/Places</th>
+						<th scope="col">Etat</th>
+						<th scope="col">Inscription</th>
+						<th scope="col">Organisateur</th>
+						<th scope="col">Action</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for event in events | sort((d1,d2) => d2.startDateTime <=> d1.startDateTime) %}
+						{% if 
+							(event.state not in stateCrea or (event.organizer.pseudo == app.user.pseudo and event.state in stateCrea)) 
+						%}
+							<tr>
+								<td>{{event.name}}</td>
+								<td>{{event.startDateTime | date('d-m-Y') }}</td>
+								<td>{{event.endRegisterDate | date('d-m-Y')}}</td>
+								<td>{{ event.participants | length }}/{{event.nbParticipantMax}}</td>
+								<td>{{event.state.label}}</td>
+								<td>
+									{% if app.user in event.participants %}
+									<div class="text-center">
+										<i class="fa-solid fa-user-check"></i>
+									</div>
+									{% endif %}
+								</td>
+								<td onclick="window.location='{{ path('app_view_participant',{id:event.organizer.id})}}';">{{event.organizer.pseudo}}</td>
+								<td>
+									<a href="{{ path('event_details',{id:event.id })}}" class="btn btn-info">
+										<i class="fa-solid fa-eye"></i>
+									</a>
+									{% if event.state in stateOpen  %}
+										{% if app.user not in event.participants %}
+											{% if event.organizer.pseudo != app.user.pseudo %}
+												<a href="{{ path('event_register',{id:event.id })}}" class="btn btn-success">
+													S'inscrire
+												</a>
+											{% endif %}
+										{% endif %}
+									{% endif %}
+									{% if event.state in stateOpen  or event.state in stateClos %}
+										{% if app.user in event.participants %}
+											<a onclick="return confirm('Voulez-vous quitter {{event.name}}?')" href="{{ path('event_unRegister',{id:event.id })}}" class="btn btn-danger">
+												Se désister
+											</a>
+										{% endif %}
+									{% endif %}
+									{% if event.state in stateCrea  %}
+										{% if event.organizer.pseudo == app.user.pseudo %}
+											<a href="{{ path('event_updateAPI',{id:event.id })}}" class="btn btn-warning">
+												modifier
+											</a>
+										{% endif %}
+									{% endif %}
+									{% if event.state in stateCrea %}
+										{% if event.organizer.pseudo == app.user.pseudo %}
+											<a href="{{ path('event_publish',{id:event.id })}}" class="btn btn-success">
+												Publier
+											</a>
+										{% endif %}
+									{% endif %}
+									{% if event.state in stateOpen or event.state in stateClos %}
+										{% if event.organizer.pseudo == app.user.pseudo %}
+											<a onclick="return confirm('Voulez-vous annuler {{event.name}}?')" href="{{ path('event_cancel',{id:event.id })}}" class="btn btn-danger">
+												Annuler
+											</a>
+										{% endif %}
+									{% endif %}
+								</td>
+							</tr>
+						{% endif %}
+					{% endfor %}
+				</tbody>
+			</table>
+			{{ knp_pagination_render(events) }}
+
+{% endblock %}
